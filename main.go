@@ -1,10 +1,9 @@
 package main
 
 import (
+	"internal/middleware"
 	"log"
 	"net/http"
-    "internal/middleware"
-    //"fmt"
 )
 
 //Handler Function for a readiness endpoint
@@ -13,12 +12,14 @@ import (
 func main() {
     const filepath_root = "."
     const port = "8080"
-
-    middleware_metrics_incrementor := middleware.middleware_metrics_incrementor_generator()
+    conf := middleware.ApiConfig {0}
+    log.Println(conf.FileserverHits)
 
     serve_mux := http.NewServeMux()
-    serve_mux.Handle("/app/*", http.StripPrefix("/app", http.FileServer(http.Dir(filepath_root))))
-    serve_mux.HandleFunc("/healthz", middleware.middleware_metrics_incrementor)
+    serve_mux.Handle("/app/*", conf.MiddlewareMetricsIncrementor(http.StripPrefix("/app", http.FileServer(http.Dir(filepath_root)))))
+    serve_mux.HandleFunc("GET /api/healthz", middleware.ReadinessEndpointHandler)
+    serve_mux.HandleFunc("GET /api/metrics", conf.MetricsEndpointHandler)
+    serve_mux.HandleFunc("/reset", conf.MiddlewareMetricsReset)
     srv := &http.Server{
         Addr: ":" + port,
         Handler: serve_mux,

@@ -1,4 +1,4 @@
-module Chirpy
+module github.com/PickleMustard/chirpy_twitter_clone
 
 go 1.22.2
 

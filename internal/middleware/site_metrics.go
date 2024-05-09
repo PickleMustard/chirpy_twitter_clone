@@ -1,32 +1,39 @@
 package middleware
 
 import (
-	//"log"
+	"fmt"
 	"net/http"
-    //"fmt"
+    "log"
 )
 
-type api_config struct {
-    fileserver_hits int
+type ApiConfig struct {
+    FileserverHits int
 }
 
-func readiness_endpoint_handler(w http.ResponseWriter, d *http.Request) {
+func ReadinessEndpointHandler(w http.ResponseWriter, d *http.Request) {
     w.Header().Set("Content-Type", "text/plain; charset=utf-8")
     w.WriteHeader(http.StatusOK)
-
-    //body_text := fmt.Sprintf("Status: %d", http.StatusOK)
-
     w.Write([]byte("OK"))
 }
 
-func (cfg *api_config) middleware_metrics_incrementor_generator() (f func(next http.Handler) http.Handler) {
-    var conf api_config;
-    conf.fileserver_hits = 0;
+func (cfg *ApiConfig) MetricsEndpointHandler(w http.ResponseWriter, d *http.Request) {
+    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+    w.WriteHeader(http.StatusOK)
+    output := fmt.Sprintf("Hits: %d\n", cfg.FileserverHits)
+    w.Write([]byte(output))
+}
 
-    increment_handler := func(next http.Handler) http.Handler {
-        conf.fileserver_hits++
-        return readiness_endpoint_handler()
-    }
+func (cfg *ApiConfig) MiddlewareMetricsIncrementor(next http.Handler) http.Handler{
+    return http.HandlerFunc(func(w http.ResponseWriter, d *http.Request) {
+        cfg.FileserverHits++
+        log.Println(cfg.FileserverHits)
+        next.ServeHTTP(w, d)
+    })
+}
 
-    return increment_handler
+func (cfg *ApiConfig) MiddlewareMetricsReset(w http.ResponseWriter, d *http.Request) {
+    cfg.FileserverHits = 0
+    log.Printf("Reseting hit counter: %d\n", cfg.FileserverHits)
+    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+    w.WriteHeader(http.StatusOK)
 }
