@@ -10,6 +10,7 @@ func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	response_data, err := json.Marshal(payload)
 	if err != nil {
+        RespondWithInternalServerError(w, 500)
 		log.Printf("Error in responding with JSON: %s", err)
 		return
 	}

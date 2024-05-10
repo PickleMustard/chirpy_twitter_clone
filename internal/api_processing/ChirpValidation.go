@@ -2,6 +2,7 @@ package apiprocessing
 
 import (
 	"encoding/json"
+	uuid "github.com/google/uuid"
 	"log"
 	"net/http"
 	"strings"
@@ -14,7 +15,7 @@ func ValidateChirp(w http.ResponseWriter, d *http.Request) {
 	}
 	type chirp_validation_return_values struct {
 		CreatedAt       time.Time `json:"created_at"`
-		Id              int       `json:"id"`
+		Id              string    `json:"id"`
 		ValidationError string    `json:"validation_error"`
 		CleanedBody     string    `json:"cleaned_body"`
 	}
@@ -31,38 +32,16 @@ func ValidateChirp(w http.ResponseWriter, d *http.Request) {
 	clean_output := clean_chirp(unvalidated_chirp.ChirpBody)
 
 	if len(unvalidated_chirp.ChirpBody) > 140 {
-		errorBody := chirp_validation_return_values{
-			CreatedAt:       time.Now(),
-			Id:              0,
-			CleanedBody:     "",
-			ValidationError: "Chirp is too long",
-		}
-		data, jsonErr := json.Marshal(errorBody)
-		if jsonErr != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(500)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(400)
-		w.Write(data)
+        RespondWithError(w, 400, "Chirp is too long")
 	} else {
 		respBody := chirp_validation_return_values{
 			CreatedAt:       time.Now(),
-			Id:              128,
+			Id:              uuid.NewString(),
 			ValidationError: "none",
 			CleanedBody:     clean_output,
 		}
 
-		data, jsonErr := json.Marshal(respBody)
-		if jsonErr != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(500)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		w.Write(data)
+        RespondWithJSON(w, 200, respBody)
 	}
 }
 
