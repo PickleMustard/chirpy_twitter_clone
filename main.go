@@ -21,7 +21,7 @@ func main() {
     serve_mux.Handle("/app/*", conf.MiddlewareMetricsIncrementor(http.StripPrefix("/app", http.FileServer(http.Dir(filepath_root)))))
     serve_mux.HandleFunc("GET /api/healthz", endpoints.ReadinessEndpointHandler)
     serve_mux.HandleFunc("GET /admin/metrics", conf.MetricsEndpointHandler)
-    serve_mux.HandleFunc("POST /api/validate_chirp", apiprocessing.ValidateChirp)
+    serve_mux.HandleFunc("POST /api/chirps", apiprocessing.ValidateChirp)
     serve_mux.HandleFunc("/api/reset", conf.MiddlewareMetricsReset)
     srv := &http.Server{
         Addr: ":" + port,
