@@ -18,6 +18,7 @@ type DB struct {
 
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
+	Users  map[int]User  `json:"users"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -30,7 +31,7 @@ func NewDB(path string) (*DB, error) {
 	_database := DB{
 		path:          path,
 		mux:           &sync.RWMutex{},
-		stored_values: DBStructure{Chirps: make(map[int]Chirp)},
+		stored_values: DBStructure{Chirps: make(map[int]Chirp), Users: make(map[int]User)},
 	}
 
 	return &_database, nil
@@ -44,7 +45,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	//If I'm here, then it has been validated
 	chirp := Chirp{
 		ChirpBody: body,
-		ID:        len(db.stored_values.Chirps)+1,
+		ID:        len(db.stored_values.Chirps) + 1,
 	}
 
 	db.stored_values.Chirps[chirp.ID] = chirp
@@ -58,9 +59,29 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	return chirp, nil
 }
 
+func (db *DB) CreateUser(email string) (User, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	user := User{
+		Email: email,
+		Id:    len(db.stored_values.Users) + 1,
+	}
+
+	db.stored_values.Users[user.Id] = user
+
+	db_err := db.writeDB(db.stored_values)
+
+	if db_err != nil {
+		return User{}, db_err
+	}
+
+	return user, nil
+}
+
 func (db *DB) GetChirps() ([]Chirp, error) {
 	struc, db_err := db.loadDB()
-    array := make([]Chirp, 0)
+	array := make([]Chirp, 0)
 	if db_err != nil {
 		log.Println("Error reading from database")
 		return nil, db_err
@@ -68,12 +89,11 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 
 	for _, text := range struc.Chirps {
 		log.Println(text)
-        array = append(array, text)
+		array = append(array, text)
 	}
 
 	return array, nil
 }
-
 
 func (db *DB) GetSpecificChirps(id int) (Chirp, error) {
 	struc, db_err := db.loadDB()
@@ -82,12 +102,12 @@ func (db *DB) GetSpecificChirps(id int) (Chirp, error) {
 		return Chirp{}, db_err
 	}
 
-    found_value, err := struc.Chirps[id]
-    log.Println(found_value)
-    if !err {
-        log.Printf("Could not find chirp")
-        return Chirp{}, errors.New("Could not find chirp")
-    }
+	found_value, err := struc.Chirps[id]
+	log.Println(found_value)
+	if !err {
+		log.Printf("Could not find chirp")
+		return Chirp{}, errors.New("Could not find chirp")
+	}
 	return found_value, nil
 }
 
