@@ -10,7 +10,6 @@ import (
 )
 
 func ValidateChirp(db *chirpdb.DB) http.Handler {
-
 	return http.HandlerFunc(func(w http.ResponseWriter, d *http.Request) {
 		type chirp_validation_return_values struct {
 			CreatedAt       time.Time `json:"created_at"`

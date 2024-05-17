@@ -1,17 +1,10 @@
 package middleware
 
 import (
-	//"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	//"time"
 )
-
-type ApiConfig struct {
-	FileserverHits int
-}
-
 
 func (cfg *ApiConfig) MetricsEndpointHandler(w http.ResponseWriter, d *http.Request) {
 	w.Header().Set("Content-Type", "text/html")

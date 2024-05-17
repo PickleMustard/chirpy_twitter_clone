@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	//uuid "github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"io/fs"
 	"log"
 	"os"
@@ -17,8 +18,8 @@ type DB struct {
 }
 
 type DBStructure struct {
-	Chirps map[int]Chirp `json:"chirps"`
-	Users  map[int]User  `json:"users"`
+	Chirps map[int]Chirp   `json:"chirps"`
+	Users  map[int]User `json:"users"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -59,13 +60,21 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	return chirp, nil
 }
 
-func (db *DB) CreateUser(email string) (User, error) {
+func (db *DB) CreateUser(email, password string) (User, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 
+	encrypted_pass, encryption_error := bcrypt.GenerateFromPassword([]byte(password), 10)
+
+	if encryption_error != nil {
+		return User{}, encryption_error
+	}
+
 	user := User{
-		Email: email,
-		Id:    len(db.stored_values.Users) + 1,
+		Email:         email,
+		Password:      " ",
+		EncryptedHash: encrypted_pass,
+		Id:            len(db.stored_values.Users) + 1,
 	}
 
 	db.stored_values.Users[user.Id] = user
@@ -77,6 +86,71 @@ func (db *DB) CreateUser(email string) (User, error) {
 	}
 
 	return user, nil
+}
+
+func (db *DB) UpdateUser(email, password string, id int) (User, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	struc, db_err := db.loadDB()
+	if db_err != nil {
+		log.Printf("Error reading from database: %s", db_err)
+		return User{}, db_err
+	}
+
+	found_value, err := struc.Users[id]
+	log.Printf("Updating user: %s", found_value.Email)
+	if !err {
+		log.Fatal("Authenticated User was not found in the database")
+	}
+
+	encrypted_pass, enctryption_error := bcrypt.GenerateFromPassword([]byte(password), 10)
+
+	if enctryption_error != nil {
+		log.Printf("Error encrypting updated password: %s", enctryption_error)
+		return User{}, db_err
+	}
+	updated_user := User{
+		Email:         email,
+		Password:      " ",
+		EncryptedHash: encrypted_pass,
+		Id:            found_value.Id,
+	}
+
+	db.stored_values.Users[found_value.Id] = updated_user
+
+	db_err = db.writeDB(db.stored_values)
+
+	if db_err != nil {
+		return User{}, db_err
+	}
+
+	return updated_user, nil
+}
+
+func (db *DB) RetrieveUser(email ,password string, id int) (User, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	struc, db_err := db.loadDB()
+	if db_err != nil {
+		log.Println("Error reading from database")
+		return User{}, db_err
+	}
+
+	found_value, err := struc.Users[id]
+	log.Println(found_value)
+	if !err {
+		log.Printf("Could not find user")
+		return User{}, errors.New("Could not find user")
+	}
+	auth_error := bcrypt.CompareHashAndPassword(found_value.EncryptedHash, []byte(password))
+
+	if auth_error != nil {
+		return User{}, auth_error
+	}
+
+	return found_value, nil
 }
 
 func (db *DB) GetChirps() ([]Chirp, error) {
