@@ -3,7 +3,6 @@ package database
 import (
 	"encoding/json"
 	"errors"
-	//uuid "github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"io/fs"
 	"log"
