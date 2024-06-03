@@ -125,6 +125,7 @@ func LoginUser(w http.ResponseWriter, d *http.Request, db *chirpdb.DB, auth_stri
 	return nil
 }
 
+//Given a certain authorization token, email, and password, update data in db if they match
 func UpdateUserInformation(w http.ResponseWriter, d *http.Request, db *chirpdb.DB, auth_string string) error {
 	_, unparsed_token, _ := strings.Cut(d.Header.Get("Authorization"), "Bearer ")
 	id, parse_error := ParseTokenWithClaim(unparsed_token, auth_string)
