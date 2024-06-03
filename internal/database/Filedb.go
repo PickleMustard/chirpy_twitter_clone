@@ -3,11 +3,13 @@ package database
 import (
 	"encoding/json"
 	"errors"
-	"golang.org/x/crypto/bcrypt"
 	"io/fs"
 	"log"
 	"os"
 	"sync"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type DB struct {
@@ -17,8 +19,9 @@ type DB struct {
 }
 
 type DBStructure struct {
-	Chirps map[int]Chirp   `json:"chirps"`
-	Users  map[int]User `json:"users"`
+	Chirps map[int]Chirp    `json:"chirps"`
+	Users  map[int]User     `json:"users"`
+	Tokens map[string]Token `json:"tokens"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -31,7 +34,7 @@ func NewDB(path string) (*DB, error) {
 	_database := DB{
 		path:          path,
 		mux:           &sync.RWMutex{},
-		stored_values: DBStructure{Chirps: make(map[int]Chirp), Users: make(map[int]User)},
+		stored_values: DBStructure{Chirps: make(map[int]Chirp), Users: make(map[int]User), Tokens: make(map[string]Token)},
 	}
 
 	return &_database, nil
@@ -87,6 +90,34 @@ func (db *DB) CreateUser(email, password string) (User, error) {
 	return user, nil
 }
 
+func (db *DB) StoreToken(auth_token, refresh_token string) (Token, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	token_duration, time_err := time.ParseDuration("1440h")
+
+	if time_err != nil {
+		log.Printf("Error recording token time: %s", time_err)
+		return Token{}, time_err
+	}
+
+	token := Token{
+		Auth_Token:      auth_token,
+		Refresh_Token:   refresh_token,
+		Expiration_Date: time.Now().Add(token_duration),
+	}
+
+	db.stored_values.Tokens[token.Refresh_Token] = token
+
+	db_err := db.writeDB(db.stored_values)
+
+	if db_err != nil {
+		return Token{}, db_err
+	}
+
+	return token, nil
+}
+
 func (db *DB) UpdateUser(email, password string, id int) (User, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
@@ -127,7 +158,7 @@ func (db *DB) UpdateUser(email, password string, id int) (User, error) {
 	return updated_user, nil
 }
 
-func (db *DB) RetrieveUser(email ,password string, id int) (User, error) {
+func (db *DB) RetrieveUser(email, password string, id int) (User, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 
@@ -147,6 +178,44 @@ func (db *DB) RetrieveUser(email ,password string, id int) (User, error) {
 
 	if auth_error != nil {
 		return User{}, auth_error
+	}
+
+	return found_value, nil
+}
+
+func (db *DB) RetrieveUserByEmail(email, password string) (User, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	struc, db_err := db.loadDB()
+	if db_err != nil {
+		log.Println("Error reading from database")
+		return User{}, db_err
+	}
+
+	for _, user := range struc.Users {
+		if user.Email == email {
+			return user, nil
+		}
+	}
+
+	return User{}, errors.New("Cannot find user with that email")
+}
+
+func (db *DB) RetrieveAuthToken(refresh_token string) (Token, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	struc, db_err := db.loadDB()
+	if db_err != nil {
+		log.Printf("Error loading data from the database: %s", db_err)
+		return Token{}, db_err
+	}
+
+	found_value, not_in_db_err := struc.Tokens[refresh_token]
+	if !not_in_db_err {
+		log.Printf("Could not find token in the database: %s", not_in_db_err)
+		return Token{}, errors.New("Could not find token in the database")
 	}
 
 	return found_value, nil
@@ -184,6 +253,28 @@ func (db *DB) GetSpecificChirps(id int) (Chirp, error) {
 	return found_value, nil
 }
 
+func (db *DB) DeleteAuthorizationToken(refresh_token string) error {
+  db.mux.Lock()
+  defer db.mux.Unlock()
+
+	struc, db_err := db.loadDB()
+	if db_err != nil {
+		log.Printf("Error reading from the database :s", db_err)
+		return db_err
+	}
+
+
+	delete(struc.Tokens, refresh_token)
+  db.stored_values = struc
+	write_err := db.writeDB(db.stored_values)
+
+	if write_err != nil {
+		log.Printf("Error deleting from the database: %s", write_err)
+		return write_err
+	}
+	return nil
+}
+
 func (db *DB) ensureDB() error { return nil }
 
 func (db *DB) loadDB() (DBStructure, error) {
@@ -214,7 +305,9 @@ func (db *DB) writeDB(dbStructure DBStructure) error {
 		return err
 	}
 
-	file_err := os.WriteFile(db.path, marshalled_chirp, 0666)
+  log.Println(string(marshalled_chirp))
+
+	file_err := os.WriteFile(db.path, marshalled_chirp, 0644)
 	if file_err != nil {
 		log.Println("Error writing json to file")
 		return file_err
