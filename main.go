@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"internal/apiprocessing"
 	"internal/database"
 	"internal/endpoints"
 	"internal/middleware"
@@ -41,9 +40,10 @@ func main() {
 	serve_mux.Handle("/app/*", conf.MiddlewareMetricsIncrementor(http.StripPrefix("/app", http.FileServer(http.Dir(filepath_root)))))
 	serve_mux.HandleFunc("GET /api/healthz", endpoints.ReadinessEndpointHandler)
 	serve_mux.HandleFunc("GET /admin/metrics", conf.MetricsEndpointHandler)
-	serve_mux.Handle("POST /api/chirps", apiprocessing.ValidateChirp(chirpdb))
-	serve_mux.Handle("GET /api/chirps", apiprocessing.ReturnChirp(chirpdb))
-	serve_mux.Handle("GET /api/chirps/{id}", apiprocessing.ReturnSpecificChirp(chirpdb))
+	serve_mux.Handle("POST /api/chirps", conf.CreateChirp())
+	serve_mux.Handle("GET /api/chirps", conf.ReturnChirp())
+	serve_mux.Handle("GET /api/chirps/{id}", conf.ReturnSpecificChirp())
+  serve_mux.Handle("DELETE /api/chirps/{id}", conf.DeleteSpecificChirp())
 	serve_mux.Handle("POST /api/users", conf.UserValidation())
 	serve_mux.Handle("PUT /api/users", conf.UserInformationUpdate())
 	serve_mux.Handle("POST /api/login", conf.UserLogin())

@@ -40,7 +40,7 @@ func NewDB(path string) (*DB, error) {
 	return &_database, nil
 }
 
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(body string, author_id int) (Chirp, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 
@@ -49,6 +49,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	chirp := Chirp{
 		ChirpBody: body,
 		ID:        len(db.stored_values.Chirps) + 1,
+		Author_ID: author_id,
 	}
 
 	db.stored_values.Chirps[chirp.ID] = chirp
@@ -254,8 +255,8 @@ func (db *DB) GetSpecificChirps(id int) (Chirp, error) {
 }
 
 func (db *DB) DeleteAuthorizationToken(refresh_token string) error {
-  db.mux.Lock()
-  defer db.mux.Unlock()
+	db.mux.Lock()
+	defer db.mux.Unlock()
 
 	struc, db_err := db.loadDB()
 	if db_err != nil {
@@ -263,9 +264,8 @@ func (db *DB) DeleteAuthorizationToken(refresh_token string) error {
 		return db_err
 	}
 
-
 	delete(struc.Tokens, refresh_token)
-  db.stored_values = struc
+	db.stored_values = struc
 	write_err := db.writeDB(db.stored_values)
 
 	if write_err != nil {
@@ -273,6 +273,38 @@ func (db *DB) DeleteAuthorizationToken(refresh_token string) error {
 		return write_err
 	}
 	return nil
+}
+
+func (db *DB) DeleteChirp(chirp_id, author_id int) error {
+  db.mux.Lock()
+  defer db.mux.Unlock()
+
+  struc, db_err := db.loadDB()
+  if db_err != nil {
+    log.Printf("Error reading from the database: %s", db_err)
+    return db_err
+  }
+
+  found_value, err := struc.Chirps[chirp_id]
+  if !err {
+    log.Printf("Could not find chirp")
+    return errors.New("Could not find chirp")
+  }
+
+  if found_value.Author_ID != author_id {
+    log.Printf("Attempting to delete another users post, failing")
+    return errors.New("Attempted to delete another users post")
+  }
+
+  delete(struc.Chirps, chirp_id)
+  db.stored_values = struc
+  write_err := db.writeDB(db.stored_values)
+
+  if write_err != nil {
+    log.Printf("Error deleting from the database: %s", write_err)
+    return write_err
+  }
+  return nil
 }
 
 func (db *DB) ensureDB() error { return nil }
@@ -305,7 +337,7 @@ func (db *DB) writeDB(dbStructure DBStructure) error {
 		return err
 	}
 
-  log.Println(string(marshalled_chirp))
+	log.Println(string(marshalled_chirp))
 
 	file_err := os.WriteFile(db.path, marshalled_chirp, 0644)
 	if file_err != nil {
