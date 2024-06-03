@@ -9,3 +9,7 @@ func RespondWithError(w http.ResponseWriter, code int, message string) {
 	w.WriteHeader(code)
 	w.Write([]byte(message))
 }
+
+func RespondWithInternalServerError(w http.ResponseWriter, code int) {
+    w.WriteHeader(code)
+}
