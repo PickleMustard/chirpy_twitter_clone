@@ -275,6 +275,38 @@ func (db *DB) DeleteAuthorizationToken(refresh_token string) error {
 	return nil
 }
 
+func (db *DB) DeleteChirp(chirp_id, author_id int) error {
+  db.mux.Lock()
+  defer db.mux.Unlock()
+
+  struc, db_err := db.loadDB()
+  if db_err != nil {
+    log.Printf("Error reading from the database: %s", db_err)
+    return db_err
+  }
+
+  found_value, err := struc.Chirps[chirp_id]
+  if !err {
+    log.Printf("Could not find chirp")
+    return errors.New("Could not find chirp")
+  }
+
+  if found_value.Author_ID != author_id {
+    log.Printf("Attempting to delete another users post, failing")
+    return errors.New("Attempted to delete another users post")
+  }
+
+  delete(struc.Chirps, chirp_id)
+  db.stored_values = struc
+  write_err := db.writeDB(db.stored_values)
+
+  if write_err != nil {
+    log.Printf("Error deleting from the database: %s", write_err)
+    return write_err
+  }
+  return nil
+}
+
 func (db *DB) ensureDB() error { return nil }
 
 func (db *DB) loadDB() (DBStructure, error) {

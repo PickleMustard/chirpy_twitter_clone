@@ -5,6 +5,7 @@ import (
 	chirpdb "internal/database"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -73,4 +74,30 @@ func clean_chirp(body string) string {
 	}
 
 	return strings.Join(split_strings, " ")
+}
+
+func DeleteChirp(w http.ResponseWriter, d *http.Request, db *chirpdb.DB, auth_string string) error {
+	_, unparsed_token, _ := strings.Cut(d.Header.Get("Authorization"), "Bearer ")
+	id, parse_error := ParseTokenWithClaim(unparsed_token, auth_string)
+	if parse_error != nil {
+		log.Printf("Couldn't authorize token: %s", parse_error)
+		RespondWithError(w, 403, "Unauthorized user")
+		return parse_error
+	}
+	desired_id := d.PathValue("id")
+	log.Printf("Desired ID: %s\n", desired_id)
+	chirp_id, conversion_error := strconv.Atoi(desired_id)
+	if conversion_error != nil {
+		log.Printf("Could not convert")
+		RespondWithError(w, 404, "Could not find that chirp")
+		return conversion_error
+	}
+	err := db.DeleteChirp(chirp_id, id)
+	if err != nil {
+		log.Printf("Bad chirp response")
+		RespondWithError(w, 403, "Could not find that chirp")
+		return err
+	}
+	RespondWithNoBody(w, 204)
+  return nil
 }

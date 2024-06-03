@@ -22,3 +22,9 @@ func (cfg *ApiConfig) ReturnSpecificChirp() http.Handler {
     apiprocessing.ReturnSpecificChirp(w, d, cfg.Database)
   })
 }
+
+func (cfg *ApiConfig) DeleteSpecificChirp() http.Handler {
+  return http.HandlerFunc(func (w http.ResponseWriter, d *http.Request) {
+    apiprocessing.DeleteChirp(w, d, cfg.Database, cfg.JWT_Secret)
+  })
+}
