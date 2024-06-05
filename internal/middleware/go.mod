@@ -1,7 +1,3 @@
-module middleware
+module github.com/PickleMustard/chirpy_twitter_clone/internal/middleware
 
-go 1.22.2
-
-require internal/apiprocessing v1.0.0
-
-replace internal/apiprocessing => ./internal/api_processing
+go 1.22.3

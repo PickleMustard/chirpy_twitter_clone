@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"internal/apiprocessing"
+	"github.com/PickleMustard/chirpy_twitter_clone/internal/apiprocessing"
 	"net/http"
 )
 

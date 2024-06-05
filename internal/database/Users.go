@@ -7,4 +7,5 @@ type User struct {
 	Password      string `json:"password"`
 	EncryptedHash []byte `json:"encrypted_password"`
 	Id            int    `json:"id"`
+	ChirpyRed     bool   `json:"upgraded_user"`
 }

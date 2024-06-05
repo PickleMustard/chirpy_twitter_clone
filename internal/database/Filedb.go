@@ -78,6 +78,7 @@ func (db *DB) CreateUser(email, password string) (User, error) {
 		Password:      " ",
 		EncryptedHash: encrypted_pass,
 		Id:            len(db.stored_values.Users) + 1,
+    ChirpyRed: false,
 	}
 
 	db.stored_values.Users[user.Id] = user
@@ -146,6 +147,7 @@ func (db *DB) UpdateUser(email, password string, id int) (User, error) {
 		Password:      " ",
 		EncryptedHash: encrypted_pass,
 		Id:            found_value.Id,
+    ChirpyRed: found_value.ChirpyRed,
 	}
 
 	db.stored_values.Users[found_value.Id] = updated_user
@@ -157,6 +159,41 @@ func (db *DB) UpdateUser(email, password string, id int) (User, error) {
 	}
 
 	return updated_user, nil
+}
+
+func (db *DB) UpgradeUser(id int) (User, error) {
+  db.mux.Lock()
+  defer db.mux.Unlock()
+
+  struc, db_err := db.loadDB()
+
+	if db_err != nil {
+		log.Printf("Error reading from database: %s", db_err)
+		return User{}, db_err
+	}
+
+	found_value, err := struc.Users[id]
+	log.Printf("Updating user: %s", found_value.Email)
+	if !err {
+		log.Fatal("Authenticated User was not found in the database")
+	}
+
+  upgraded_user := User{
+    Email: found_value.Email,
+    Password: " ",
+    EncryptedHash: found_value.EncryptedHash,
+    Id: found_value.Id,
+    ChirpyRed: true,
+  }
+
+  db.stored_values.Users[found_value.Id] = upgraded_user
+  db_err = db.writeDB(db.stored_values)
+
+  if db_err != nil {
+    return User{}, db_err
+  }
+  return upgraded_user, nil
+
 }
 
 func (db *DB) RetrieveUser(email, password string, id int) (User, error) {

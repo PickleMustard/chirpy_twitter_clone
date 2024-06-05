@@ -1,3 +1,3 @@
-module endpoints
+module github.com/PickleMustard/chirpy_twitter_clone/internal/endpoints
 
-go 1.22.2
+go 1.22.3
